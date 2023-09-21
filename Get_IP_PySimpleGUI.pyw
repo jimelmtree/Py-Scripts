@@ -10,11 +10,11 @@ Change Log:
     Changed from tkinter GUI to PySimpleGUI
 - Version 1.4.0 (Revision 5, September 15, 2023):
   - Added functions for:
-  1. Copy IP to Clipboard:
-     Add a button to copy the displayed IP address to the clipboard.
+  1. Copy Network Info to Clipboard:
+     Add a button to copy the displayed Network Info to the clipboard.
 
   2. Display Hostname:
-     Along with displaying the IP address, display the hostname of the computer.
+     Along with displaying the Network Info, display the hostname of the computer.
 
   3. Ping a Specific Device:
      Allow the user to enter an IP address and ping that specific device to check its availability.
@@ -47,14 +47,85 @@ import requests
 import struct
 import speedtest
 import threading
+import os
+import pyperclip
 import PySimpleGUI as sg
+
+import PySimpleGUI as sg
+
+# Custom theme definition
+custom_theme = {
+    'BACKGROUND': '#282C35',
+    'TEXT': '#00FF00',
+    'INPUT': '#00FF00',
+    'TEXT_INPUT': '#282C35',
+    'SCROLL': '#282C35',
+    'BUTTON': ('#00FF00', '#282C35', sg.theme_button_color()),
+    'PROGRESS': ('#00FF00', '#282C35'),
+    'BORDER': 0,
+    'SLIDER_DEPTH': 0,
+    'PROGRESS_DEPTH': 0
+}
+
+# Set the custom theme
+sg.theme('DarkBlack')
+sg.theme_text_color('white')
+
+# Function to ping a specific IP address
+def ping_device():
+    try:
+        # Prompt the user to enter an IP address
+        ip_address = sg.popup_get_text("Enter the IP address to ping:")
+
+        if ip_address:
+            # Ping the specified IP address
+            response = os.system(f"ping -n 4 {ip_address}")
+
+            if response == 0:
+                sg.Popup(f"Ping successful to {ip_address}", title="Ping Result")
+            else:
+                sg.Popup(f"Ping failed to {ip_address}", title="Ping Result")
+        else:
+            sg.Popup("No IP address entered.", title="Error")
+    except Exception as e:
+        sg.Popup(f"An error occurred while pinging the IP address. Error: {str(e)}", title="Error")
+
+# Function to copy the IP address to the clipboard using PySimpleGUI
+def copy_to_clipboard(ip_address):
+    pyperclip.copy(ip_address)  # Copy the IP address to the clipboard
+    sg.Popup("IP address copied to clipboard.")
 
 # Function to display network information
 def display_network_info():
     try:
         default_gateway = ".".join(ipaddress.IPv4Network("0.0.0.0/0", strict=False).exploded.split('.')[:-1]) + ".1"
         subnet_mask = socket.inet_ntoa(struct.pack('!I', 0xFFFFFFFF ^ (1 << 32 - 24) - 1))
-        sg.Popup(f"Subnet Mask: {subnet_mask}\nDefault Gateway: {default_gateway}", title="Network Information")
+
+        # Get the hostname of the computer
+        hostname = socket.gethostname()
+
+        ip_address_info = f"Hostname: {hostname}\nSubnet Mask: {subnet_mask}\nDefault Gateway: {default_gateway}"
+
+        # Create a layout for the popup window
+        popup_layout = [
+            [sg.Text(ip_address_info, size=(50, 5))],
+            [sg.Button("Copy IP to Clipboard", key="-COPY_IP-")]
+        ]
+
+        # Create the popup window
+        popup_window = sg.Window("Network Information", popup_layout)
+
+        while True:
+            event, values = popup_window.read()
+
+            if event == sg.WINDOW_CLOSED:
+                break
+            elif event == "-COPY_IP-":
+                copy_to_clipboard(default_gateway)
+                sg.popup("IP address copied to clipboard.")
+
+        popup_window.close()
+
     except Exception as e:
         sg.Popup(f"Unable to retrieve network information. Error: {str(e)}", title="Error")
 
@@ -111,12 +182,13 @@ def run_speed_test_in_thread():
 def update_label_with_results(results):
     result_label.update(value=f"Speed Test Results:\n{results}")
 
-# Define the GUI layout
+# GUI layout 
 layout = [
-    [sg.Button("Run Speed Test", key="-SPEED_TEST-", size=(40, 4))],
-    [sg.Button("Display Network Info", key="-NETWORK_INFO-", size=(40, 4))],
-    [sg.Button("Display My Public IP", key="-PUBLIC_IP-", size=(40, 4))],
-    [sg.Button("Display Geolocation", key="-GEOLOCATION-", size=(40, 4))],
+    [sg.Button("Run Speed Test", key="-SPEED_TEST-", size=(50, 5), button_color=('#005700', '#D3FFCE'))],
+    [sg.Button("Display Network Info", key="-NETWORK_INFO-", size=(50, 5), button_color=('#005700', '#D3FFCE'))],
+    [sg.Button("Display My Public IP", key="-PUBLIC_IP-", size=(50, 5), button_color=('#005700', '#D3FFCE'))],
+    [sg.Button("Display Geolocation", key="-GEOLOCATION-", size=(50, 5), button_color=('#005700', '#D3FFCE'))],
+    [sg.Button("Ping Device", key="-PING_DEVICE-", size=(50, 5), button_color=('#005700', '#D3FFCE'))],  
     [sg.Text("", size=(50, 5), key="-RESULT-")],
 ]
 
@@ -140,6 +212,8 @@ while True:
         display_geolocation()
     elif event == "-SPEED_TEST-":
         network_speed_test()
+    elif event == "-PING_DEVICE-":
+        ping_device()
 
 # Close the window
 window.close()
