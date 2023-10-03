@@ -6,7 +6,9 @@ Date: September 14, 2023
 Version: 1.5.0 (Revision 5, September 15, 2023)
 
 Change Log:
-- Version 1.5.0(Revision 5, September 15, 2023)
+- Version 1.6.0(Revision 7, October 3, 2023)
+    Added Get all devices function
+- Version 1.5.0(Revision 6, September 15, 2023)
     Changed from tkinter GUI to PySimpleGUI
 - Version 1.4.0 (Revision 5, September 15, 2023):
   - Added functions for:
@@ -51,7 +53,35 @@ import os
 import pyperclip
 import PySimpleGUI as sg
 
-import PySimpleGUI as sg
+# Function to retrieve all devices on the network using arp -a
+def get_all_devices():
+    try:
+        # Execute arp -a command and capture the output
+        result = os.popen("arp -a").read()
+
+        # Create a layout for the window to display the device information
+        layout = [
+            [sg.Text(result, size=(100, 20))],
+            [sg.Button("Copy Devices to Clipboard", key="-COPY_DEVICES-")]
+        ]
+
+        # Create the window
+        window = sg.Window("Devices on the Network", layout, resizable=True)
+
+        while True:
+            event, _ = window.read()
+
+            if event == sg.WINDOW_CLOSED:
+                break
+            elif event == "-COPY_DEVICES-":
+                copy_to_clipboard(result)
+                sg.popup("Device information copied to clipboard.")
+
+        window.close()
+
+    except Exception as e:
+        sg.Popup(f"Unable to retrieve devices on the network. Error: {str(e)}", title="Error")
+
 
 # Custom theme definition
 custom_theme = {
@@ -64,10 +94,15 @@ custom_theme = {
     'PROGRESS': ('#00FF00', '#282C35'),
     'BORDER': 0,
     'SLIDER_DEPTH': 0,
-    'PROGRESS_DEPTH': 0
+    'PROGRESS_DEPTH': 0,
+    'WINDOW' : {
+        'resizable': True # Make all popup windows resizeable
+    }
 }
 
 # Set the custom theme
+sg.theme_add_new('CustomTheme', custom_theme)
+sg.theme('CustomTheme')
 sg.theme('DarkBlack')
 sg.theme_text_color('white')
 
@@ -185,6 +220,7 @@ def update_label_with_results(results):
 # GUI layout 
 layout = [
     [sg.Button("Run Speed Test", key="-SPEED_TEST-", size=(50, 5), button_color=('#005700', '#D3FFCE'))],
+    [sg.Button("Get All Devices", key="-GET_DEVICES-", size=(50, 5), button_color=('#005700', '#D3FFCE'))],
     [sg.Button("Display Network Info", key="-NETWORK_INFO-", size=(50, 5), button_color=('#005700', '#D3FFCE'))],
     [sg.Button("Display My Public IP", key="-PUBLIC_IP-", size=(50, 5), button_color=('#005700', '#D3FFCE'))],
     [sg.Button("Display Geolocation", key="-GEOLOCATION-", size=(50, 5), button_color=('#005700', '#D3FFCE'))],
@@ -214,6 +250,8 @@ while True:
         network_speed_test()
     elif event == "-PING_DEVICE-":
         ping_device()
+    elif event == "-GET_DEVICES-":
+        get_all_devices()
 
 # Close the window
 window.close()
